@@ -5,6 +5,7 @@ import (
 
 	"github.com/mmyj/mmyj-urltopn/top/solution1"
 	"github.com/mmyj/mmyj-urltopn/top/solution2"
+	"github.com/mmyj/mmyj-urltopn/top/solution3"
 	"github.com/mmyj/mmyj-urltopn/top/util"
 )
 
@@ -50,5 +51,21 @@ func BenchmarkSolution2_256(b *testing.B) {
 //BenchmarkSolution2_1024-8   	       1	1828375873 ns/op	236878016 B/op	 3397730 allocs/op
 func BenchmarkSolution2_1024(b *testing.B) {
 	fn := util.SolutionFunc{Fn: solution2.SolutionBatch1024, Title: "SolutionBatch1024"}
+	util.Benchmark(b, fn)
+}
+
+//util.go:154: SolutionFunc-SolutionWorker16 total: 0.00(mb), max: 1.22(mb)
+func TestSolution3_256(t *testing.T) {
+	fn := util.SolutionFunc{Fn: solution3.SolutionWorker16, Title: "SolutionWorker16"}
+	util.AssertSolutionIsRight(t, fn)
+	util.PrintMemUsed(t, fn)
+	//util.GetCpuPprof(fn)
+}
+
+//cpu: Intel(R) Core(TM) i5-1038NG7 CPU @ 2.00GHz
+//BenchmarkSolution2
+//BenchmarkSolution3_16-8   	       1	1488560641 ns/op	340459600 B/op	 6732726 allocs/op
+func BenchmarkSolution3_16(b *testing.B) {
+	fn := util.SolutionFunc{Fn: solution3.SolutionWorker16, Title: "SolutionWorker16"}
 	util.Benchmark(b, fn)
 }

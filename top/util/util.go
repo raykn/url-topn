@@ -49,6 +49,13 @@ func (m *MemConsumer) Consume(d int64) {
 	}
 }
 
+func (m *MemConsumer) Max() int64 {
+	if m != nil {
+		return m.max
+	}
+	return 0
+}
+
 func SaveAnswer(solutionName string, list []Pair) (fileName string) {
 	path := TempDir + fmt.Sprintf("my-answer-%s", solutionName)
 	answerFile, err := os.Create(path)
