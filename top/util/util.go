@@ -30,7 +30,10 @@ func (p1 Pair) Greater(p2 Pair) bool {
 
 var TempDir = os.TempDir() + "top-url"
 
-type SolutionFunc func(memConsume *MemConsumer) []Pair
+type SolutionFunc struct {
+	Fn    func(memConsume *MemConsumer) []Pair
+	Title string
+}
 
 type MemConsumer struct {
 	max   int64
@@ -46,8 +49,8 @@ func (m *MemConsumer) Consume(d int64) {
 	}
 }
 
-func SaveAnswer(solutionNo int, list []Pair) (fileName string) {
-	path := TempDir + fmt.Sprintf("my-answer-%d", solutionNo)
+func SaveAnswer(solutionName string, list []Pair) (fileName string) {
+	path := TempDir + fmt.Sprintf("my-answer-%s", solutionName)
 	answerFile, err := os.Create(path)
 	if err != nil {
 		panic(err)
@@ -107,27 +110,27 @@ func CheckAnswer(myAnsFileName string) (ret bool, desc string) {
 	return true, ""
 }
 
-func AssertSolutionIsRight(t *testing.T, solutionNo int, solutionFn SolutionFunc) {
-	myAnsFileName := SaveAnswer(solutionNo, solutionFn(nil))
+func AssertSolutionIsRight(t *testing.T, solution SolutionFunc) {
+	myAnsFileName := SaveAnswer(solution.Title, solution.Fn(nil))
 	defer os.Remove(myAnsFileName)
 	ok, desc := CheckAnswer(myAnsFileName)
 	if !ok {
-		t.Fatal(fmt.Sprintf("SolutionFunc-%d failed, %s", solutionNo, desc))
+		t.Fatal(fmt.Sprintf("SolutionFunc-%s failed, %s", solution.Title, desc))
 	}
 }
 
-func GetCpuPprof(sol SolutionFunc) {
+func GetCpuPprof(solution SolutionFunc) {
 	fcpu, err := os.Create("cpu.prof")
 	defer fcpu.Close()
 	if err != nil {
 		panic(err)
 	}
 	pprof.StartCPUProfile(fcpu)
-	sol(nil)
+	solution.Fn(nil)
 	pprof.StopCPUProfile()
 }
 
-func GetMemPprof(sol SolutionFunc) {
+func GetMemPprof(solution SolutionFunc) {
 	runtime.GC()
 	fmem, err := os.Create("mem.prof")
 	defer fmem.Close()
@@ -135,19 +138,19 @@ func GetMemPprof(sol SolutionFunc) {
 		panic(err)
 	}
 	pprof.WriteHeapProfile(fmem)
-	sol(nil)
+	solution.Fn(nil)
 }
 
-func PrintMemUsed(t *testing.T, sol SolutionFunc) {
+func PrintMemUsed(t *testing.T, solution SolutionFunc) {
 	var mc MemConsumer
-	sol(&mc)
-	t.Logf("total: %0.2f(mb), max: %0.2f(mb)", float64(mc.total)/mb, float64(mc.max)/mb)
+	solution.Fn(&mc)
+	t.Logf("SolutionFunc-%s total: %0.2f(mb), max: %0.2f(mb)", solution.Title, float64(mc.total)/mb, float64(mc.max)/mb)
 }
 
-func Benchmark(b *testing.B, solutionFn SolutionFunc) {
+func Benchmark(b *testing.B, solution SolutionFunc) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		solutionFn(nil)
+		solution.Fn(nil)
 	}
 }

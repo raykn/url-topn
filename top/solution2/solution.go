@@ -3,6 +3,7 @@ package solution2
 import (
 	"bufio"
 	"crypto/md5"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -12,8 +13,8 @@ import (
 	"github.com/mmyj/mmyj-urltopn/top/util"
 )
 
-// Solution 类似mapreduce处理
-func Solution(mc *util.MemConsumer) []util.Pair {
+// baseSolution 类似mapreduce处理
+func baseSolution(mc *util.MemConsumer, batch int64) []util.Pair {
 	dataFile, err := os.Open("data")
 	if err != nil {
 		panic(err)
@@ -21,22 +22,21 @@ func Solution(mc *util.MemConsumer) []util.Pair {
 	defer dataFile.Close()
 
 	const (
-		batch    = 256
 		buffSize = 4096
 	)
 	tempFiles := make([]*os.File, batch)
 	tempFileBuffWrites := make([]*bufio.Writer, batch)
 	mc.Consume(int64(unsafe.Sizeof(os.File{})) * batch)
 	mc.Consume(int64(unsafe.Sizeof(bufio.Writer{})) * batch)
-	mc.Consume(buffSize * batch * 2)
+	mc.Consume(buffSize * batch)
 
 	defer func() {
 		mc.Consume(-int64(unsafe.Sizeof(os.File{})) * batch)
 		mc.Consume(-int64(unsafe.Sizeof(bufio.Writer{})) * batch)
-		mc.Consume(-buffSize * batch * 2)
+		mc.Consume(-buffSize * batch)
 	}()
 
-	for i := 0; i < batch; i++ {
+	for i := 0; i < int(batch); i++ {
 		tempFile := util.TempDir + fmt.Sprintf("temp-%d", i)
 		tempFiles[i], err = os.Create(tempFile)
 		if err != nil {
@@ -61,13 +61,14 @@ func Solution(mc *util.MemConsumer) []util.Pair {
 			panic(err)
 		}
 		sumBytes := md5.Sum(line)
-		buff := tempFileBuffWrites[int(sumBytes[0])]
+		sum := binary.BigEndian.Uint32(sumBytes[:4])
+		buff := tempFileBuffWrites[int64(sum)%batch]
 		_, err = buff.WriteString(string(line) + "\n")
 		if err != nil {
 			panic(err)
 		}
 	}
-	for i := 0; i < batch; i++ {
+	for i := 0; i < int(batch); i++ {
 		err = tempFileBuffWrites[i].Flush()
 		if err != nil {
 			panic(err)
@@ -75,7 +76,7 @@ func Solution(mc *util.MemConsumer) []util.Pair {
 	}
 
 	myHeap := util.NewPairHeap(util.TopN)
-	for i := 0; i < batch; i++ {
+	for i := 0; i < int(batch); i++ {
 		_, err = tempFiles[i].Seek(0, io.SeekStart)
 		if err != nil {
 			panic(err)
@@ -111,4 +112,12 @@ func Solution(mc *util.MemConsumer) []util.Pair {
 	})
 	mc.Consume(int64(unsafe.Sizeof(util.Pair{})) * int64(len(list)))
 	return list
+}
+
+func SolutionBatch256(mc *util.MemConsumer) []util.Pair {
+	return baseSolution(mc, 256)
+}
+
+func SolutionBatch1024(mc *util.MemConsumer) []util.Pair {
+	return baseSolution(mc, 1024)
 }
